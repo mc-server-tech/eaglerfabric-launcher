@@ -1,87 +1,88 @@
-const folderPicker = document.getElementById('folderPicker');
-const btnScan = document.getElementById('btnScan');
-const btnPlay = document.getElementById('btnPlay');
-const btnDownload = document.getElementById('btnDownload');
-const modListDiv = document.getElementById('modList');
-const iframe = document.getElementById('gameFrame');
+const status = document.getElementById("status");
+const modUpload = document.getElementById("modUpload");
+const playBtn = document.getElementById("playBtn");
+const modListUL = document.getElementById("modList");
 
-let uploadedFiles = [];
-let modsMap = new Map();
+// Loaded mods in memory
+let loadedMods = [];
 
-btnScan.onclick = async () => {
-  uploadedFiles = Array.from(folderPicker.files || []);
-  if (!uploadedFiles.length) { alert('Select a folder'); return; }
+// Handle mod folder upload
+modUpload.addEventListener("change", async (event) => {
+    const files = Array.from(event.target.files);
+    status.textContent = `Loading ${files.length} files...`;
+    loadedMods = [];
+    modListUL.innerHTML = "";
 
-  modsMap.clear();
-  for (const f of uploadedFiles) {
-    const rel = f.webkitRelativePath || f.name;
-    const top = rel.split('/')[0];
-    if (!modsMap.has(top)) modsMap.set(top, { files: new Map(), descriptor: null });
-    modsMap.get(top).files.set(rel.replace(`${top}/`, ''), f);
-  }
+    // Group files by top-level folder (mod folder)
+    const modsMap = {};
 
-  for (const [modName, obj] of modsMap) {
-    if (obj.files.has('mod.json')) {
-      try { obj.descriptor = JSON.parse(await obj.files.get('mod.json').text()); } 
-      catch (e) { obj.descriptor = null; }
+    for (const file of files) {
+        const relPath = file.webkitRelativePath || file.name;
+        const topFolder = relPath.split("/")[0];
+        if (!modsMap[topFolder]) modsMap[topFolder] = [];
+        modsMap[topFolder].push(file);
     }
-  }
-  renderModList();
-};
 
-function renderModList() {
-  modListDiv.innerHTML = '';
-  for (const [modName, obj] of modsMap) {
-    const d = obj.descriptor;
-    const el = document.createElement('div');
-    el.style.marginBottom = '6px';
-    el.innerHTML = `<strong>${d?.id||modName}</strong> <small>${d?.version||''}</small>
-      <div><button data-mod="${modName}" class="btnRemove">Remove</button></div>`;
-    modListDiv.appendChild(el);
-  }
-  for (const b of document.getElementsByClassName('btnRemove')) {
-    b.onclick = (ev) => {
-      modsMap.delete(ev.target.dataset.mod);
-      renderModList();
-    };
-  }
-}
+    // Process each mod folder
+    for (const modName in modsMap) {
+        const modFiles = modsMap[modName];
+        const mod = { name: modName, files: [] };
 
-btnPlay.onclick = async () => {
-  if (modsMap.size === 0) { alert('No mods added'); return; }
+        for (const file of modFiles) {
+            const content = await file.arrayBuffer();
+            mod.files.push({ path: file.webkitRelativePath || file.name, content });
+        }
 
-  const modsPayload = {};
-  for (const [modName, obj] of modsMap) {
-    modsPayload[modName] = { files: {}, descriptor: obj.descriptor || {} };
-    for (const [relPath, file] of obj.files) {
-      const blobUrl = URL.createObjectURL(file.slice());
-      modsPayload[modName].files[relPath] = blobUrl;
+        loadedMods.push(mod);
+
+        // Add to ModMenu UI
+        const li = document.createElement("li");
+        li.textContent = modName;
+        modListUL.appendChild(li);
     }
-  }
 
-  iframe.contentWindow.postMessage({ type: 'EAGLERFABRIC_INJECT_MODS', mods: modsPayload }, '*');
-  alert('Mods sent to client iframe. Press M in-game to open Mod Menu.');
-};
+    status.textContent = `Loaded ${loadedMods.length} mod(s).`;
+});
 
-btnDownload.onclick = async () => {
-  const zip = new JSZip();
+// Play button logic
+playBtn.addEventListener("click", () => {
+    status.textContent = "Initializing EaglerFabric WASM client...";
 
-  async function addFile(url, pathInZip) {
-    const resp = await fetch(url);
-    if (resp.ok) zip.file(pathInZip, await resp.arrayBuffer());
-  }
-  await addFile('eagler-client/EaglerCraft_1.12_Offline_en_US.html', 'eagler-client/EaglerCraft_1.12_Offline_en_US.html');
-
-  for (const [modName, obj] of modsMap) {
-    const modFolder = zip.folder(`mods/${modName}`);
-    for (const [relPath, file] of obj.files) {
-      modFolder.file(relPath, await file.arrayBuffer());
+    // Ensure EaglerAPI is available
+    if (!window.EaglerAPI) {
+        status.textContent = "EaglerAPI not loaded! Check api/api.js";
+        return;
     }
-  }
 
-  const content = await zip.generateAsync({ type: 'blob' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(content);
-  a.download = 'eaglerfabric_with_mods.zip';
-  a.click();
-};
+    // Inject mods in order: EaglerAPI first
+    console.log("Injecting EaglerAPI...");
+    if (window.EaglerAPI.init) window.EaglerAPI.init();
+
+    loadedMods.forEach(mod => {
+        console.log(`Injecting mod: ${mod.name}`);
+        mod.files.forEach(f => {
+            // If JS file, inject as script
+            if (f.path.endsWith(".js")) {
+                const blob = new Blob([f.content], { type: "application/javascript" });
+                const script = document.createElement("script");
+                script.src = URL.createObjectURL(blob);
+                document.body.appendChild(script);
+            }
+            // Assets / configs could be handled here
+        });
+    });
+
+    // Launch WASM client in iframe
+    const existingIframe = document.getElementById("eaglerClient");
+    if (existingIframe) existingIframe.remove();
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "eaglerClient";
+    iframe.src = "Eaglercraft_1.12_Offline_en_US.html"; // Your WASM HTML client
+    iframe.width = "100%";
+    iframe.height = "800px";
+    iframe.style.border = "none";
+    document.body.appendChild(iframe);
+
+    status.textContent = "Game launched!";
+});

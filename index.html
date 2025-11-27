@@ -3,35 +3,92 @@
 <head>
 <meta charset="UTF-8">
 <title>EaglerFabric Launcher</title>
-<style>
-body { margin:0; font-family: system-ui; }
-#topbar {
-  position: fixed; left:10px; top:10px; z-index:9999;
-  background: rgba(0,0,0,0.7); color:#fff; padding:10px; border-radius:6px;
-}
-#modList { max-height:240px; overflow:auto; margin-top:8px; }
-button { margin:4px; }
-iframe { width:100vw; height:100vh; border:0; }
-input[type="file"] { display:inline-block; }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div id="topbar">
-  <div><strong>EaglerFabric Launcher</strong></div>
-  <div style="margin-top:6px">
-    <input id="folderPicker" type="file" webkitdirectory directory multiple />
-    <button id="btnScan">Scan & Add</button>
-    <button id="btnPlay">Play in Browser</button>
-    <button id="btnDownload">Download Full Client + Mods</button>
-  </div>
-  <div id="modList"></div>
+<div id="header">EaglerFabric Launcher</div>
+
+<div id="container">
+    <!-- Sidebar for ModMenu and controls -->
+    <div id="sidebar">
+        <h2>ModMenu</h2>
+        <label for="modUpload">Upload Mod Folders or ZIPs:</label>
+        <input type="file" id="modUpload" multiple webkitdirectory directory>
+        <div id="modListContainer">
+            <ul id="modList"></ul>
+        </div>
+        <button id="playBtn">Play</button>
+        <div id="status"></div>
+    </div>
+
+    <!-- Game iframe -->
+    <iframe id="gameFrame" src="eagler-client/Eaglercraft_1.12_Offline_en_US.html"></iframe>
 </div>
 
-<iframe id="gameFrame" src="eagler-client/EaglerCraft_1.12_Offline_en_US.html"></iframe>
+<!-- Scripts -->
+<script src="libs/jszip.min.js"></script>
+<script src="api/api.js"></script>
+<script src="mod-system/utils.js"></script>
+<script src="mod-system/loader.js"></script>
 
-<script type="module" src="launcher-ui.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+const modUpload = document.getElementById("modUpload");
+const modListUL = document.getElementById("modList");
+const status = document.getElementById("status");
+const iframe = document.getElementById("gameFrame");
+
+modUpload.addEventListener("change", async (event) => {
+    status.textContent = "Processing mods...";
+    modListUL.innerHTML = "";
+    const files = Array.from(event.target.files);
+    const folderFiles = await LoaderUtils.getFilesFromDirectoryInput(modUpload);
+
+    // Support zip files as well
+    for (const file of folderFiles) {
+        if (file.name.endsWith(".zip")) {
+            const zipFiles = await LoaderUtils.extractZipFiles(file);
+            folderFiles.push(...zipFiles);
+        }
+    }
+
+    // Group by top-level folder
+    const modsMap = {};
+    folderFiles.forEach(f => {
+        const path = f.webkitRelativePath || f.name;
+        const topFolder = path.split("/")[0];
+        if (!modsMap[topFolder]) modsMap[topFolder] = [];
+        modsMap[topFolder].push(f);
+    });
+
+    // Load each mod folder
+    for (const modName in modsMap) {
+        const modFiles = modsMap[modName];
+        const mod = await EaglerLoader.loadModFolder(modFiles, iframe);
+
+        // Add to ModMenu UI
+        const li = document.createElement("li");
+        li.textContent = modName;
+        li.className = "mod-entry";
+        modListUL.appendChild(li);
+    }
+
+    status.textContent = `Loaded ${Object.keys(modsMap).length} mod(s).`;
+});
+
+document.getElementById("playBtn").addEventListener("click", () => {
+    status.textContent = "Launching EaglerFabric client...";
+    // EaglerAPI is already built-in and loaded via api.js
+    if (window.EaglerAPI && window.EaglerAPI.init) {
+        window.EaglerAPI.init();
+    }
+    // Inject all mods already loaded via EaglerLoader
+    EaglerLoader.EAGLER_MODS.forEach(mod => {
+        console.log("Ready to inject mod:", mod.id);
+    });
+    status.textContent = "Game launched!";
+});
+</script>
 
 </body>
 </html>

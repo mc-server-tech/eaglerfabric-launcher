@@ -1,0 +1,66 @@
+/* ==========================
+   Launcher UI Styles
+========================== */
+
+body {
+    margin: 0;
+    background: #0f0f0f;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+#header {
+    width: 100%;
+    padding: 15px 20px;
+    background: #111;
+    font-size: 22px;
+    border-bottom: 2px solid #333;
+}
+
+#container {
+    display: flex;
+    height: calc(100vh - 50px);
+}
+
+#sidebar {
+    width: 290px;
+    background: #141414;
+    border-right: 3px solid #222;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+#sidebar h2 {
+    font-size: 20px;
+    margin-top: 0;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    background: #2d62ff;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1f49c7;
+}
+
+.mod-entry {
+    background: #1a1a1a;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 8px;
+    border-left: 4px solid #2d62ff;
+}
+
+#gameFrame {
+    flex: 1;
+    border: none;
+    background: black;
+}

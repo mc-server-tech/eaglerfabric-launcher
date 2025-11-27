@@ -1,50 +1,60 @@
-(function(){
-  const mods = [];
-  function registerMod(descriptor, main){ mods.push({descriptor, main, enabled:true}); }
-  window.EaglerFabric = { registerMod, getMods: ()=>mods };
+// =========================
+// Eagler Mod Loader (Full)
+// =========================
 
-  window.addEventListener('message', async (ev)=>{
-    const msg = ev.data;
-    if(!msg || msg.type!=='EAGLERFABRIC_INJECT_MODS') return;
-    const modsObj = msg.mods;
-    for(const modName of Object.keys(modsObj)){
-      const m = modsObj[modName];
-      if(m.files['index.js']){
-        try{
-          const module = await import(m.files['index.js']);
-          if(typeof module.default==='function') module.default(window.EaglerFabric);
-          registerMod(m.descriptor||{id:modName}, module);
-        }catch(e){ console.error('Failed to load mod', modName,e); }
-      }
+// Stores loaded mods
+const EAGLER_MODS = [];
+
+// Inject script into iframe client
+function injectScriptIntoClient(iframe, code) {
+    const doc = iframe.contentWindow.document;
+    const script = doc.createElement("script");
+    script.type = "text/javascript";
+    script.textContent = code;
+    doc.head.appendChild(script);
+}
+
+// Load a mod folder
+async function loadModFolder(fileList, iframe) {
+    const mod = {
+        id: "",
+        files: [],
+        manifest: null
+    };
+
+    // Scan through zip input or folder input
+    for (const file of fileList) {
+        const path = file.webkitRelativePath || file.name;
+
+        if (path.endsWith("mod.json")) {
+            const text = await file.text();
+            mod.manifest = JSON.parse(text);
+            mod.id = mod.manifest.id;
+        } else if (path.endsWith(".js")) {
+            mod.files.push(file);
+        }
     }
-  });
 
-  const menu = document.createElement('div');
-  menu.style.position='absolute'; menu.style.top='40px'; menu.style.left='40px';
-  menu.style.zIndex='99999'; menu.style.background='rgba(0,0,0,0.8)'; menu.style.color='#fff';
-  menu.style.padding='8px'; menu.style.display='none';
-  document.body.appendChild(menu);
+    if (!mod.manifest) {
+        alert("Invalid mod: missing mod.json");
+        return;
+    }
 
-  window.addEventListener('keydown', e=>{
-    if(e.key==='M'){ menu.style.display = menu.style.display==='none'?'block':'none'; renderMenu(); }
-  });
+    // Read each JS file and inject to iframe
+    for (const jsFile of mod.files) {
+        const code = await jsFile.text();
+        injectScriptIntoClient(iframe, code);
+    }
 
-  function renderMenu(){
-    menu.innerHTML = '<strong>Mods</strong><div id="mod-list"></div>';
-    const list = document.getElementById('mod-list');
-    list.innerHTML = '';
-    mods.forEach((m,i)=>{
-      const el = document.createElement('div');
-      el.style.marginTop='6px';
-      el.innerHTML = `${m.descriptor?.id||'mod'+i} - <button data-idx="${i}">${m.enabled?'Disable':'Enable'}</button>`;
-      list.appendChild(el);
-    });
-    list.querySelectorAll('button').forEach(btn=>{
-      btn.onclick = ev=>{
-        const i=+ev.target.dataset.idx;
-        mods[i].enabled = !mods[i].enabled;
-        renderMenu();
-      };
-    });
-  }
-})();
+    // Register mod
+    EAGLER_MODS.push(mod);
+
+    console.log(`Loaded mod: ${mod.manifest.id}`);
+    return mod;
+}
+
+// === Attach to UI ===
+window.EaglerLoader = {
+    loadModFolder,
+    EAGLER_MODS
+};
