@@ -10,7 +10,6 @@
 <div id="header">EaglerFabric Launcher</div>
 
 <div id="container">
-    <!-- Sidebar for ModMenu and controls -->
     <div id="sidebar">
         <h2>ModMenu</h2>
         <label for="modUpload">Upload Mod Folders or ZIPs:</label>
@@ -19,14 +18,13 @@
             <ul id="modList"></ul>
         </div>
         <button id="playBtn">Play</button>
+        <button id="downloadBtn">Download Launcher with Mods</button>
         <div id="status"></div>
     </div>
 
-    <!-- Game iframe -->
-    <iframe id="gameFrame" src="eagler-client/Eaglercraft_1.12_Offline_en_US.html"></iframe>
+    <iframe id="gameFrame" src="eagler-client/Eaglercraft_1.12_Offline_en_US.html" style="border:none; width:100%; height:100vh;"></iframe>
 </div>
 
-<!-- Scripts -->
 <script src="libs/jszip.min.js"></script>
 <script src="api/api.js"></script>
 <script src="mod-system/utils.js"></script>
@@ -41,32 +39,27 @@ const iframe = document.getElementById("gameFrame");
 modUpload.addEventListener("change", async (event) => {
     status.textContent = "Processing mods...";
     modListUL.innerHTML = "";
-    const files = Array.from(event.target.files);
-    const folderFiles = await LoaderUtils.getFilesFromDirectoryInput(modUpload);
+    const inputFiles = Array.from(event.target.files);
+    const fileList = await LoaderUtils.getFilesFromDirectoryInput(modUpload);
 
-    // Support zip files as well
-    for (const file of folderFiles) {
+    for (const file of fileList) {
         if (file.name.endsWith(".zip")) {
-            const zipFiles = await LoaderUtils.extractZipFiles(file);
-            folderFiles.push(...zipFiles);
+            const extracted = await LoaderUtils.extractZipFiles(file);
+            fileList.push(...extracted);
         }
     }
 
-    // Group by top-level folder
     const modsMap = {};
-    folderFiles.forEach(f => {
+    fileList.forEach(f => {
         const path = f.webkitRelativePath || f.name;
-        const topFolder = path.split("/")[0];
-        if (!modsMap[topFolder]) modsMap[topFolder] = [];
-        modsMap[topFolder].push(f);
+        const top = path.split("/")[0];
+        if (!modsMap[top]) modsMap[top] = [];
+        modsMap[top].push(f);
     });
 
-    // Load each mod folder
     for (const modName in modsMap) {
         const modFiles = modsMap[modName];
         const mod = await EaglerLoader.loadModFolder(modFiles, iframe);
-
-        // Add to ModMenu UI
         const li = document.createElement("li");
         li.textContent = modName;
         li.className = "mod-entry";
@@ -78,17 +71,44 @@ modUpload.addEventListener("change", async (event) => {
 
 document.getElementById("playBtn").addEventListener("click", () => {
     status.textContent = "Launching EaglerFabric client...";
-    // EaglerAPI is already built-in and loaded via api.js
-    if (window.EaglerAPI && window.EaglerAPI.init) {
+    if (window.EaglerAPI && typeof window.EaglerAPI.init === "function") {
         window.EaglerAPI.init();
     }
-    // Inject all mods already loaded via EaglerLoader
-    EaglerLoader.EAGLER_MODS.forEach(mod => {
-        console.log("Ready to inject mod:", mod.id);
-    });
+    EaglerLoader.EAGLER_MODS.forEach(m => console.log("Mod loaded:", m.id));
     status.textContent = "Game launched!";
 });
-</script>
 
+// Download button logic
+document.getElementById("downloadBtn").addEventListener("click", async () => {
+    if (!EaglerLoader.EAGLER_MODS.length) {
+        alert("No mods loaded to include!");
+        return;
+    }
+    const zip = new JSZip();
+    // Add Eagler-client launcher HTML
+    const clientHtmlResp = await fetch("eagler-client/Eaglercraft_1.12_Offline_en_US.html");
+    const clientHtml = await clientHtmlResp.text();
+    zip.file("eagler-client/Eaglercraft_1.12_Offline_en_US.html", clientHtml);
+
+    // (Optional) TODO: recursively include wasm/ and assets/ — implement as needed
+
+    const modsFolder = zip.folder("mods");
+    EaglerLoader.EAGLER_MODS.forEach(mod => {
+        const folder = modsFolder.folder(mod.id);
+        mod.files.forEach(f => {
+            folder.file(f.path.split("/").slice(1).join("/"), f.content);
+        });
+    });
+
+    const launcherHtml = await fetch("index.html").then(r => r.text());
+    zip.file("index.html", launcherHtml);
+
+    const blob = await zip.generateAsync({ type: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "EaglerFabric_Launcher_With_Mods.zip";
+    a.click();
+});
+</script>
 </body>
 </html>

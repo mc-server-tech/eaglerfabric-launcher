@@ -1,18 +1,12 @@
-// =========================
-// Loader Utility Functions
-// =========================
-
-// Read a full folder upload (directory input)
+// Utility functions for mod handling
 async function getFilesFromDirectoryInput(input) {
     if (!input.files || input.files.length === 0) return [];
     return Array.from(input.files);
 }
 
-// Read zip via JSZip (already in libs/)
 async function extractZipFiles(file) {
     const zip = await JSZip.loadAsync(file);
     const entries = [];
-
     await Promise.all(
         Object.keys(zip.files).map(async (key) => {
             const entry = zip.files[key];
@@ -23,19 +17,11 @@ async function extractZipFiles(file) {
             }
         })
     );
-
     return entries;
 }
 
-// Connect iframe load event
 function onIframeLoaded(iframe, callback) {
-    iframe.addEventListener("load", () => {
-        callback(iframe.contentWindow);
-    });
+    iframe.addEventListener("load", () => callback(iframe.contentWindow));
 }
 
-window.LoaderUtils = {
-    getFilesFromDirectoryInput,
-    extractZipFiles,
-    onIframeLoaded
-};
+window.LoaderUtils = { getFilesFromDirectoryInput, extractZipFiles, onIframeLoaded };
