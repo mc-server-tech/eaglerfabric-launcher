@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EaglerFabric Launcher</title>
+<style>
+body { margin:0; font-family: system-ui; }
+#topbar {
+  position: fixed; left:10px; top:10px; z-index:9999;
+  background: rgba(0,0,0,0.7); color:#fff; padding:10px; border-radius:6px;
+}
+#modList { max-height:240px; overflow:auto; margin-top:8px; }
+button { margin:4px; }
+iframe { width:100vw; height:100vh; border:0; }
+input[type="file"] { display:inline-block; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div><strong>EaglerFabric Launcher</strong></div>
+  <div style="margin-top:6px">
+    <input id="folderPicker" type="file" webkitdirectory directory multiple />
+    <button id="btnScan">Scan & Add</button>
+    <button id="btnPlay">Play in Browser</button>
+    <button id="btnDownload">Download Full Client + Mods</button>
+  </div>
+  <div id="modList"></div>
+</div>
+
+<iframe id="gameFrame" src="eagler-client/EaglerCraft_1.12_Offline_en_US.html"></iframe>
+
+<script type="module" src="launcher-ui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+</body>
+</html>
