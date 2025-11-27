@@ -1,66 +1,46 @@
-/* ==========================
-   Launcher UI Styles
-========================== */
-
 body {
-    margin: 0;
-    background: #0f0f0f;
-    color: white;
+    background: #1e1e1e;
+    color: #fff;
     font-family: Arial, sans-serif;
-}
-
-#header {
-    width: 100%;
-    padding: 15px 20px;
-    background: #111;
-    font-size: 22px;
-    border-bottom: 2px solid #333;
-}
-
-#container {
     display: flex;
-    height: calc(100vh - 50px);
+    justify-content: center;
+    padding-top: 20px;
 }
 
-#sidebar {
-    width: 290px;
-    background: #141414;
-    border-right: 3px solid #222;
-    padding: 15px;
-    overflow-y: auto;
-}
-
-#sidebar h2 {
-    font-size: 20px;
-    margin-top: 0;
+.container {
+    background: #2b2b2b;
+    padding: 25px;
+    border-radius: 10px;
+    width: 600px;
 }
 
 button {
     width: 100%;
     padding: 12px;
-    margin-top: 10px;
-    background: #2d62ff;
+    margin: 10px 0;
+    background: #4caf50;
     border: none;
     border-radius: 6px;
+    font-size: 16px;
     color: white;
-    font-size: 15px;
     cursor: pointer;
 }
 
-button:hover {
-    background: #1f49c7;
+button:hover { background: #45a049; }
+
+#modMenu {
+    margin-top: 15px;
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid #555;
+    padding: 10px;
+    border-radius: 6px;
 }
 
 .mod-entry {
-    background: #1a1a1a;
-    padding: 10px;
-    border-radius: 5px;
-    margin-top: 8px;
-    border-left: 4px solid #2d62ff;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
 }
 
-#gameFrame {
-    flex: 1;
-    border: none;
-    background: black;
-}
+#status { margin-top: 15px; font-size: 14px; }
