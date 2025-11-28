@@ -1,50 +1,67 @@
-const modsFolder = 'mods/';
-let mods = [];
+let mods = []; // {name, code}
 
-// Dynamically detect all JS files in mods folder
-async function detectMods() {
-  // If you have a list or manifest, use it here.
-  // For now, manually list mods:
-  mods = ['EaglerAPI.js']; // Add other JS mods as needed
-  updateModMenu();
+async function loadZipMod(file) {
+  const zip = await JSZip.loadAsync(file);
+  zip.forEach((path, entry) => {
+    entry.async('string').then(content => {
+      mods.push({name: path, code: content});
+      updateModMenu();
+    });
+  });
 }
 
-// Inject mods into iframe before launching client
-async function injectMods(iframe) {
-  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-
-  for (const mod of mods) {
-    const response = await fetch(`${modsFolder}${mod}`);
-    const code = await response.text();
-    const script = iframeDoc.createElement('script');
-    script.textContent = code;
-    iframeDoc.body.appendChild(script);
+document.getElementById('importMod').addEventListener('change', async (e) => {
+  const files = e.target.files;
+  for (const file of files) {
+    if (file.name.endsWith('.zip')) {
+      await loadZipMod(file);
+    } else if (file.name.endsWith('.js')) {
+      const text = await file.text();
+      mods.push({name: file.name, code: text});
+      updateModMenu();
+    }
   }
+});
+
+// Update mod menu UI
+function updateModMenu() {
+  const list = document.getElementById('modList');
+  list.innerHTML = '';
+  mods.forEach(m => {
+    const li = document.createElement('li');
+    li.textContent = m.name;
+    list.appendChild(li);
+  });
 }
 
-// Launch the game
+// Inject mods into iframe before starting game
+async function injectMods(iframe) {
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  mods.forEach(mod => {
+    const script = doc.createElement('script');
+    script.textContent = mod.code;
+    doc.body.appendChild(script);
+  });
+}
+
+// Launch game
 document.getElementById('launchBtn').addEventListener('click', async () => {
   const iframe = document.getElementById('gameFrame');
-
-  // Load the iframe with the WASM client
   iframe.src = 'astra.html';
-
-  // Wait for iframe to load
   iframe.onload = async () => {
-    await detectMods();
     await injectMods(iframe);
     console.log('Game launched with mods!');
   };
 });
 
-// Restart the game
+// Restart
 document.getElementById('restartBtn').addEventListener('click', () => {
   const iframe = document.getElementById('gameFrame');
   iframe.src = '';
   setTimeout(() => { iframe.src = 'astra.html'; }, 100);
 });
 
-// Fullscreen toggle
+// Fullscreen
 document.getElementById('fullscreenBtn').addEventListener('click', () => {
   const iframe = document.getElementById('gameFrame');
   if (iframe.requestFullscreen) iframe.requestFullscreen();
@@ -54,35 +71,16 @@ document.getElementById('fullscreenBtn').addEventListener('click', () => {
 document.getElementById('modMenuBtn').addEventListener('click', () => {
   document.getElementById('modMenu').style.display = 'block';
 });
-
 document.getElementById('closeModMenu').addEventListener('click', () => {
   document.getElementById('modMenu').style.display = 'none';
 });
 
-// Update Mod Menu UI
-function updateModMenu() {
-  const modList = document.getElementById('modList');
-  modList.innerHTML = '';
-  mods.forEach(mod => {
-    const li = document.createElement('li');
-    li.textContent = mod;
-    modList.appendChild(li);
-  });
-}
-
-// Download full client
+// Download client with mods
 document.getElementById('downloadBtn').addEventListener('click', async () => {
   const zip = new JSZip();
-
-  // Add mods
   const modsZip = zip.folder('mods');
-  for (const mod of mods) {
-    const res = await fetch(`${modsFolder}${mod}`);
-    const content = await res.text();
-    modsZip.file(mod, content);
-  }
+  mods.forEach(m => modsZip.file(m.name, m.code));
 
-  // Add required files
   const files = ['astra.html', 'bootstraps.js', 'assets.epw', 'index.html'];
   for (const f of files) {
     const res = await fetch(f);
