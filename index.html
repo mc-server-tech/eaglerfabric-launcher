@@ -6,15 +6,6 @@
   <link rel="stylesheet" href="style.css">
   <style>
     body { font-family: sans-serif; text-align: center; }
-    #dropZone {
-      border: 2px dashed #888;
-      padding: 20px;
-      margin: 10px auto;
-      width: 400px;
-      height: 100px;
-      line-height: 60px;
-      color: #888;
-    }
     #modMenu { display:none; border:1px solid #333; padding:10px; width:400px; margin:10px auto; text-align:left; }
     .modItem { border-bottom:1px solid #ccc; padding:5px; cursor:pointer; }
     .modFiles { display:none; margin-left:15px; }
@@ -24,7 +15,7 @@
   <h1>EaglerFabric Launcher</h1>
 
   <div id="controls">
-    <div id="dropZone">Drag & Drop Mod Folders Here</div>
+    <input type="file" id="importModBtn" webkitdirectory directory multiple />
     <button id="launchBtn">Launch Game</button>
     <button id="restartBtn">Restart Game</button>
     <button id="fullscreenBtn">Fullscreen</button>

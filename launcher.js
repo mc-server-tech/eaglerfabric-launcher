@@ -17,36 +17,20 @@ async function loadModsFromFolder() {
   updateModMenu();
 }
 
-// Drag-and-drop folder import
-async function handleDrop(event) {
-  event.preventDefault();
-  const items = event.dataTransfer.items;
-  for (let i = 0; i < items.length; i++) {
-    const entry = items[i].webkitGetAsEntry();
-    if (entry && entry.isDirectory) {
-      await readDirectory(entry);
-    }
-  }
-}
-
-// Recursively read folder and collect files
-async function readDirectory(dirEntry, path = '') {
-  const reader = dirEntry.createReader();
-  const entries = await new Promise(resolve => reader.readEntries(resolve));
-  const files = {};
-
-  for (const entry of entries) {
-    if (entry.isFile) {
-      const file = await new Promise(resolve => entry.file(resolve));
-      const text = await file.text();
-      files[path + file.name] = text;
-    } else if (entry.isDirectory) {
-      const nestedFiles = await readDirectory(entry, path + entry.name + '/');
-      Object.assign(files, nestedFiles);
-    }
+// Import mod folder selected via button
+async function importModFiles(fileList) {
+  const folderMap = {}; // group files by top folder name
+  for (const file of fileList) {
+    const relativePath = file.webkitRelativePath || file.name;
+    const topFolder = relativePath.split('/')[0];
+    if (!folderMap[topFolder]) folderMap[topFolder] = {};
+    folderMap[topFolder][relativePath.replace(topFolder + '/', '')] = await file.text();
   }
 
-  mods.push({name: dirEntry.name, files, enabled: true});
+  for (const folderName of Object.keys(folderMap)) {
+    mods.push({name: folderName, files: folderMap[folderName], enabled: true});
+  }
+
   updateModMenu();
 }
 
@@ -76,9 +60,7 @@ function updateModMenu() {
     const toggle = document.createElement('input');
     toggle.type = 'checkbox';
     toggle.checked = m.enabled;
-    toggle.addEventListener('change', () => {
-      mods[idx].enabled = toggle.checked;
-    });
+    toggle.addEventListener('change', () => { mods[idx].enabled = toggle.checked; });
 
     const title = document.createElement('span');
     title.textContent = ' ' + m.name;
@@ -154,10 +136,7 @@ async function downloadClient() {
 }
 
 // Event listeners
-const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('dragover', e => e.preventDefault());
-dropZone.addEventListener('drop', handleDrop);
-
+document.getElementById('importModBtn').addEventListener('change', e => importModFiles(e.target.files));
 document.getElementById('launchBtn').addEventListener('click', launchGame);
 document.getElementById('restartBtn').addEventListener('click', restartGame);
 document.getElementById('fullscreenBtn').addEventListener('click', fullscreenGame);
@@ -167,7 +146,6 @@ document.getElementById('modMenuBtn').addEventListener('click', () => {
 document.getElementById('closeModMenu').addEventListener('click', () => {
   document.getElementById('modMenu').style.display = 'none';
 });
-document.getElementById('downloadBtn').addEventListener('click', downloadClient);
 
 // Initialize
 window.addEventListener('DOMContentLoaded', loadModsFromFolder);
