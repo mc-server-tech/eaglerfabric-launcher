@@ -1,5 +1,5 @@
 let mods = []; // {name, files: {filename: content}, enabled: true}
-let gameFrame = document.getElementById('gameFrame');
+const gameFrame = document.getElementById('gameFrame');
 
 // Load precommitted mods from manifest
 async function loadModsFromFolder() {
@@ -19,7 +19,7 @@ async function loadModsFromFolder() {
   } catch(e){ console.warn('No preloaded mods'); }
 }
 
-// Import mod folders via file picker
+// Import mod folders via button
 async function importModFiles(fileList) {
   const folderMap = {};
   for (const file of fileList) {
@@ -35,16 +35,21 @@ async function importModFiles(fileList) {
   updateModMenu();
 }
 
-// Inject enabled mods into WASM client
+// Inject mods **after client fully initializes**
 async function injectMods() {
-  const iframeDoc = gameFrame.contentDocument || gameFrame.contentWindow.document;
-  for (const mod of mods) {
-    if (!mod.enabled) continue;
-    for (const [filename, content] of Object.entries(mod.files)) {
-      const script = iframeDoc.createElement('script');
-      script.textContent = content;
-      iframeDoc.body.appendChild(script);
+  try {
+    const iframeDoc = gameFrame.contentDocument || gameFrame.contentWindow.document;
+    for (const mod of mods) {
+      if (!mod.enabled) continue;
+      for (const [filename, content] of Object.entries(mod.files)) {
+        const script = iframeDoc.createElement('script');
+        script.textContent = content;
+        iframeDoc.body.appendChild(script);
+      }
     }
+    console.log('Mods injected successfully!');
+  } catch(e) {
+    console.error('Error injecting mods:', e);
   }
 }
 
@@ -55,10 +60,12 @@ function updateModMenu() {
   mods.forEach((m, idx) => {
     const div = document.createElement('div');
     div.className = 'modItem';
+
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = m.enabled;
     checkbox.addEventListener('change', () => mods[idx].enabled = checkbox.checked);
+
     const title = document.createElement('span');
     title.textContent = ' ' + m.name;
     title.style.cursor = 'pointer';
@@ -82,19 +89,20 @@ function updateModMenu() {
   });
 }
 
-// Launch the WASM client
+// Launch WASM client reliably
 function launchGame() {
-  gameFrame.src = 'astra.html'; // or your WASM HTML
-  gameFrame.onload = () => {
-    // Delay to ensure WASM runtime is initialized
+  gameFrame.src = 'astra.html'; // WASM client HTML
+  gameFrame.onload = async () => {
+    console.log('Game iframe loaded, waiting for WASM runtime...');
+    // Wait 1.5 seconds to ensure WASM fully initializes
     setTimeout(async () => {
       await injectMods();
       console.log('Game launched with mods!');
-    }, 1000);
+    }, 1500);
   };
 }
 
-// Restart
+// Restart game
 function restartGame() {
   gameFrame.src = '';
   setTimeout(launchGame, 100);
@@ -105,7 +113,7 @@ function fullscreenGame() {
   if (gameFrame.requestFullscreen) gameFrame.requestFullscreen();
 }
 
-// Download client with mods
+// Download client + mods
 async function downloadClient() {
   const zip = new JSZip();
   const modsZip = zip.folder('mods');
@@ -143,5 +151,5 @@ document.getElementById('closeModMenu').addEventListener('click', () => {
   document.getElementById('modMenu').style.display = 'none';
 });
 
-// Initialize
+// Initialize preloaded mods
 window.addEventListener('DOMContentLoaded', loadModsFromFolder);
