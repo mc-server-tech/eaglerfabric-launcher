@@ -1,32 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>EaglerFabric Launcher</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>EaglerFabric Launcher</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
-    <h1>EaglerFabric Launcher</h1>
-    <p>Play mods in-browser or download a playable HTML with all your mods included.</p>
+  <h1>EaglerFabric Launcher</h1>
+  <div id="controls">
+    <button id="launchBtn">Launch Game</button>
+    <button id="restartBtn">Restart Game</button>
+    <button id="fullscreenBtn">Fullscreen</button>
+    <button id="modMenuBtn">Mod Menu</button>
+    <button id="downloadBtn">Download Client</button>
+  </div>
+  
+  <iframe id="gameFrame" src="astra.html" width="800" height="600"></iframe>
 
-    <input type="file" id="uploadMod" multiple accept=".zip,.jar">
-    <button id="injectModsBtn">Inject Mods</button>
-    <button id="downloadAllBtn">Download Playable HTML</button>
+  <div id="modMenu" style="display:none;">
+    <h2>Installed Mods</h2>
+    <ul id="modList"></ul>
+    <button id="closeModMenu">Close</button>
+  </div>
 
-    <h2>Mod Menu</h2>
-    <div id="modMenu"></div>
-
-    <div id="status"></div>
-
-    <h2>Client</h2>
-    <iframe id="clientFrame" src="Eaglercraft_1.12_Offline_en_US.html" width="100%" height="600px"></iframe>
-</div>
-
-<!-- JSZip library for handling zip files -->
-<script src="jszip.min.js"></script>
-
-<!-- Launcher logic (inject mods, mod menu, download HTML) -->
-<script src="launcher.js"></script>
+  <script src="libs/jszip.min.js"></script>
+  <script src="launcher.js"></script>
 </body>
 </html>
