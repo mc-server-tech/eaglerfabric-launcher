@@ -1,7 +1,8 @@
 let mods = []; // {name, files: {filename: content}, enabled: true}
-const gameFrame = document.getElementById('gameFrame');
+let gameFrame = document.getElementById('gameFrame');
+const preloadFrame = document.getElementById('preloadFrame');
 
-// Load precommitted mods from manifest
+// Load precommitted mods from manifest (optional)
 async function loadModsFromFolder() {
   try {
     const res = await fetch('mods/manifest.json');
@@ -35,7 +36,7 @@ async function importModFiles(fileList) {
   updateModMenu();
 }
 
-// Inject mods **after client fully initializes**
+// Inject mods into the running WASM client
 async function injectMods() {
   try {
     const iframeDoc = gameFrame.contentDocument || gameFrame.contentWindow.document;
@@ -89,23 +90,30 @@ function updateModMenu() {
   });
 }
 
-// Launch WASM client reliably
+// Launch WASM client instantly
 function launchGame() {
-  gameFrame.src = 'astra.html'; // WASM client HTML
-  gameFrame.onload = async () => {
-    console.log('Game iframe loaded, waiting for WASM runtime...');
-    // Wait 1.5 seconds to ensure WASM fully initializes
-    setTimeout(async () => {
-      await injectMods();
-      console.log('Game launched with mods!');
-    }, 1500);
-  };
+  // Replace main iframe with preloaded iframe
+  gameFrame.replaceWith(preloadFrame);
+  preloadFrame.id = 'gameFrame';
+  gameFrame = preloadFrame;
+  gameFrame.style.display = 'block';
+
+  // Inject mods after a short delay
+  setTimeout(async () => {
+    await injectMods();
+    console.log('Game launched with mods!');
+  }, 500); // Adjust if needed
 }
 
 // Restart game
 function restartGame() {
-  gameFrame.src = '';
-  setTimeout(launchGame, 100);
+  const newFrame = document.createElement('iframe');
+  newFrame.id = 'preloadFrame';
+  newFrame.src = 'astra.html';
+  newFrame.style.display = 'none';
+  gameFrame.replaceWith(newFrame);
+  preloadFrame.id = 'gameFrame';
+  setTimeout(() => launchGame(), 100);
 }
 
 // Fullscreen
